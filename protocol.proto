@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package log;
+
+message Message {
+  string text = 1;
+  int64 timestamp = 2;
+}
+
+message Block {
+  string service = 1;
+  string level = 2;
+  repeated Message messages = 3;
+  int64 start_time = 4;
+  int64 end_time = 5;
+}
+
+message GetResponse {
+  repeated Message messages = 1;
+}

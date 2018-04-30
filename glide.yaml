@@ -1,0 +1,10 @@
+package: github.com/alexmorten/log
+import:
+- package: github.com/golang/protobuf
+  version: ^1.0.0
+  subpackages:
+  - proto
+- package: github.com/smartystreets/goconvey
+  version: ^1.6.3
+  subpackages:
+  - convey

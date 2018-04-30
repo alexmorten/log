@@ -1,0 +1,29 @@
+hash: 475e67d8900db14d81edc91408bb847ee0a599e76b9623dabc84cafe6453cf8c
+updated: 2018-04-14T12:19:46.199676+02:00
+imports:
+- name: github.com/gogo/protobuf
+  version: 1adfc126b41513cc696b209667c8656ea7aac67c
+  subpackages:
+  - proto
+- name: github.com/golang/protobuf
+  version: 925541529c1fa6821df4e44ce2723319eb2be768
+  subpackages:
+  - proto
+- name: github.com/smartystreets/goconvey
+  version: 9e8dc3f972df6c8fcc0375ef492c24d0bb204857
+  subpackages:
+  - convey
+  - convey/gotest
+  - convey/reporting
+testImports:
+- name: github.com/gopherjs/gopherjs
+  version: 444abdf920945de5d4a977b572bcc6c674d1e4eb
+  subpackages:
+  - js
+- name: github.com/jtolds/gls
+  version: 77f18212c9c7edc9bd6a33d383a7b545ce62f064
+- name: github.com/smartystreets/assertions
+  version: 0b37b35ec7434b77e77a4bb29b79677cced992ea
+  subpackages:
+  - internal/go-render/render
+  - internal/oglematchers
