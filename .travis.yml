@@ -1,0 +1,12 @@
+language: go
+go:
+- 1.9.x
+before_install:
+- curl https://glide.sh/get | sh
+install:
+- make dep
+script:
+- make test
+notifications:
+  slack:
+    secure: ADZoH6mJNOsuQsV6P4ScVUCCRHaCVLfdhkQJDPRRCiP8c0dAmg3853VRuL6MBD+VxU/0uiAiAHi5fKwPlQYGtcq5w9vwtVQgPljyUK3ZY/fP5wbUNjo1sN1sbhWrfzbKJ+iWL5hAoiXGICOh9RF0KBDFKlVULUIHKr9Ko4SU0KEYKvgWQ4yZSB8epExQjfpxZuKVtMtEwqnKJAun0NkA65Esp8GvY7JHfoZowPzxy+mApoY6hitdqBYo7MJNzr//xVXPTwUrNJnZ8wk3aIqUztCitJmJBn23GNix+5OvTEqvZUDS4g4oPaDcyq1xA6HpK4bL0vNLjacGo/+2RnmI2NjaFN4kjUY/2lrKvN2rz/wmtrkwjsOu3aI/cn1eNxwiJm3gN9NlcN73qfxKkwmbzfSjz8Q2cf+u+c32pwhLE8FGkaxZn6181Dtwjyi9rvEliiIBzJukhUIBY5qTlaGrYya+GaBW5DBuh4EocdQYKbP6hz2yjYhZrR40G5sMY45E73tovsyAk+1JwAjflXd3kYhmBTMtnbgmYKE200yKPRsSCu06nn3YjvA1A9LK48zcN38jnCYnaMOfu6Sy+LpYw3y4kYWznZKjgzU36NrUhBAzGNTg1cfTVEZEdvmYsGTpY5lQqge5pj1zgHrNcucYwBh3KLNkN4RLseTjzRVx3V4=
