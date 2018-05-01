@@ -61,10 +61,10 @@ func TestCache(t *testing.T) {
 }
 
 func TestCacheCleaning(t *testing.T) {
-	limitBefore := CACHEMESSAGECOUNTLIMIT
+	limitBefore := cacheMessageCountLimit
 
 	Convey("cleanCache", t, func() {
-		CACHEMESSAGECOUNTLIMIT = 5
+		cacheMessageCountLimit = 5
 		cache := NewCache()
 		b1 := &Block{
 			StartTime: 5002,
@@ -116,5 +116,5 @@ func TestCacheCleaning(t *testing.T) {
 		So(cache.GetBlocks("test", "cache2"), ShouldResemble, []*Block{b3, b4})
 	})
 
-	CACHEMESSAGECOUNTLIMIT = limitBefore
+	cacheMessageCountLimit = limitBefore
 }
