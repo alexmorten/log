@@ -4,8 +4,7 @@ import (
 	"sync"
 )
 
-//CACHEMESSAGECOUNTLIMIT is the limit of messages kept in the cache
-var CACHEMESSAGECOUNTLIMIT = 1000000
+var cacheMessageCountLimit = 1000000
 
 // Cache of blocks for instant access
 type Cache struct {
@@ -72,7 +71,7 @@ func (c *Cache) handleAddBlock(b *Block) {
 }
 
 func (c *Cache) cleanCache() {
-	if c.messageCounter > CACHEMESSAGECOUNTLIMIT {
+	if c.messageCounter > cacheMessageCountLimit {
 		for key, blocks := range c.blocks {
 			if len(blocks) == 0 {
 				continue
