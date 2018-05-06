@@ -28,8 +28,20 @@ func TestPostEndpoint(t *testing.T) {
 				&Message{Text: "Baz", Timestamp: 10001},
 			},
 		}
-		byteArray, _ := proto.Marshal(b)
-		req := httptest.NewRequest("POST", "/users", bytes.NewReader(byteArray))
+		b2 := &Block{
+			StartTime: 4999,
+			EndTime:   9999,
+			Service:   "test",
+			Level:     "endpoint2",
+			Messages: []*Message{
+				&Message{Text: "Foob", Timestamp: 4999},
+				&Message{Text: "Barb", Timestamp: 7005},
+				&Message{Text: "Bazb", Timestamp: 9999},
+			},
+		}
+		postRequest := &PostRequest{Blocks: []*Block{b, b2}}
+		byteArray, _ := proto.Marshal(postRequest)
+		req := httptest.NewRequest("POST", "/", bytes.NewReader(byteArray))
 		resp := httptest.NewRecorder()
 
 		s := NewServer()
@@ -41,6 +53,11 @@ func TestPostEndpoint(t *testing.T) {
 		outputBlock := &Block{}
 		proto.Unmarshal(byteArray, outputBlock)
 		So(outputBlock.Messages[0].Text, ShouldEqual, "Foo")
+
+		byteArray, _ = ioutil.ReadFile(pathPrefix + "/test/endpoint2/4999-9999")
+		outputBlock = &Block{}
+		proto.Unmarshal(byteArray, outputBlock)
+		So(outputBlock.Messages[0].Text, ShouldEqual, "Foob")
 	})
 
 	os.RemoveAll(pathPrefix)
@@ -96,9 +113,9 @@ func TestGetEndpointCache(t *testing.T) {
 				&Message{Text: "Baz", Timestamp: 10001},
 			},
 		}
-
-		byteArray, _ := proto.Marshal(b)
-		req := httptest.NewRequest("POST", "/users", bytes.NewReader(byteArray))
+		postRequest := &PostRequest{Blocks: []*Block{b}}
+		byteArray, _ := proto.Marshal(postRequest)
+		req := httptest.NewRequest("POST", "/", bytes.NewReader(byteArray))
 		resp := httptest.NewRecorder()
 
 		s := NewServer()

@@ -65,21 +65,29 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
-	b := &Block{}
+	postRequest := &PostRequest{}
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = proto.Unmarshal(bytes, b)
-	if err != nil || !b.Valid() {
+	err = proto.Unmarshal(bytes, postRequest)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	for _, block := range postRequest.Blocks {
+		if !block.Valid() {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+	for _, block := range postRequest.Blocks {
+		storageWriter := s.WriterCollection.GetWriter(block.Service, block.Level)
+		storageWriter.InChannel <- block
+	}
 
-	storageWriter := s.WriterCollection.GetWriter(b.Service, b.Level)
-	storageWriter.InChannel <- b
 	w.WriteHeader(http.StatusOK)
 }
 

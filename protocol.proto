@@ -18,3 +18,7 @@ message Block {
 message GetResponse {
   repeated Message messages = 1;
 }
+
+message PostRequest {
+  repeated Block blocks = 1;
+}
