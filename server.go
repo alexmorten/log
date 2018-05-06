@@ -31,7 +31,7 @@ func NewServer() *Server {
 func StartServer() {
 	s := NewServer()
 	http.Handle("/", s)
-	err := http.ListenAndServe(":4000", nil)
+	err := http.ListenAndServe(":7654", nil)
 	if err != nil {
 		fmt.Println(err)
 	}
