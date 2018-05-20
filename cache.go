@@ -8,7 +8,7 @@ var cacheMessageCountLimit = 1000000
 
 // Cache of blocks for instant access
 type Cache struct {
-	blocks          map[string][]*Block
+	blocks          map[string]map[string][]*Block
 	mutex           sync.Mutex
 	inChannel       chan *Block
 	shutdownChannel chan struct{}
@@ -18,7 +18,7 @@ type Cache struct {
 //NewCache ...
 func NewCache() *Cache {
 	cache := &Cache{
-		blocks:          map[string][]*Block{},
+		blocks:          map[string]map[string][]*Block{},
 		mutex:           sync.Mutex{},
 		inChannel:       make(chan *Block),
 		shutdownChannel: make(chan struct{}),
@@ -38,9 +38,50 @@ func (c *Cache) AddBlock(b *Block) {
 	c.InChannel() <- b
 }
 
-//GetBlocks for service and level
-func (c *Cache) GetBlocks(service, level string) []*Block {
-	return c.blocks[BlockPath(service, level)]
+//GetBlock for service and level
+func (c *Cache) GetBlock(startTime, endTime int64, service, level string) *Block {
+	blocks := []*Block{}
+	for _, block := range c.blocks[service][level] {
+		if block.IsInTimeRange(startTime, endTime) {
+			blocks = append(blocks, block)
+		}
+	}
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	blocks = sortBlocks(blocks)
+	if len(blocks) > 0 {
+		blocks[0].ReduceToTimeRange(startTime, endTime)
+	}
+	if len(blocks) > 1 {
+		blocks[len(blocks)-1].ReduceToTimeRange(startTime, endTime)
+	}
+
+	mergedBlock := blocks[0].Copy()
+	for i := 1; i < len(blocks); i++ {
+		mergedBlock.Merge(blocks[i])
+	}
+
+	return mergedBlock
+}
+
+//GetLevels for a given service
+func (c *Cache) GetLevels(service string) (levels []string) {
+	for _, levelMap := range c.blocks {
+		for level := range levelMap {
+			levels = append(levels, level)
+		}
+	}
+	return
+}
+
+//GetServices that have messages in the cache
+func (c *Cache) GetServices() (services []string) {
+	for serviceName := range c.blocks {
+		services = append(services, serviceName)
+	}
+	return
 }
 
 //Shutdown the cache
@@ -63,28 +104,30 @@ loop:
 func (c *Cache) handleAddBlock(b *Block) {
 	c.messageCounter += len(b.Messages)
 
-	key := b.path()
-	current := c.blocks[key]
+	current := c.blocks[b.Service][b.Level]
 
-	c.blocks[key] = append(current, b)
+	//make sure the inner map is initialized as well
+	if c.blocks[b.Service] == nil {
+		c.blocks[b.Service] = map[string][]*Block{}
+	}
+
+	c.blocks[b.Service][b.Level] = append(current, b)
 	c.cleanCache()
 }
 
 func (c *Cache) cleanCache() {
 	if c.messageCounter > cacheMessageCountLimit {
-		for key, blocks := range c.blocks {
-			if len(blocks) == 0 {
-				continue
-			}
-			newBlocks := []*Block{}
-			c.messageCounter -= len(blocks[0].Messages)
-			for i := 1; i < len(blocks); i++ {
-				newBlocks = append(newBlocks, blocks[i])
-			}
-			if len(newBlocks) > 0 {
-				c.blocks[key] = newBlocks
-			} else {
-				c.blocks[key] = []*Block{}
+		for serviceName, levelToBlockMap := range c.blocks {
+			for level, blocks := range levelToBlockMap {
+				if len(blocks) == 0 {
+					continue
+				}
+				newBlocks := []*Block{}
+				c.messageCounter -= len(blocks[0].Messages)
+				for i := 1; i < len(blocks); i++ {
+					newBlocks = append(newBlocks, blocks[i])
+				}
+				c.blocks[serviceName][level] = newBlocks
 			}
 		}
 	}

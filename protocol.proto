@@ -7,6 +7,21 @@ message Message {
   int64 timestamp = 2;
 }
 
+message PlainMessage {
+  Message message = 1;
+}
+
+message ServiceMessage {
+  Message message = 1;
+  string level = 2;
+}
+
+message CompleteMessage {
+  Message message = 1;
+  string level = 2;
+  string service = 3;
+}
+
 message Block {
   string service = 1;
   string level = 2;
@@ -15,9 +30,19 @@ message Block {
   int64 end_time = 5;
 }
 
-message GetResponse {
-  repeated Message messages = 1;
+message GetServiceLevelResponse {
+  repeated PlainMessage messages = 1;
 }
+
+message GetServiceResponse {
+  repeated ServiceMessage messages = 1;
+}
+
+
+message GetResponse {
+  repeated CompleteMessage messages = 1;
+}
+
 
 message PostRequest {
   repeated Block blocks = 1;

@@ -46,15 +46,29 @@ func TestCache(t *testing.T) {
 
 		cache.inChannel <- b1
 		time.Sleep(10 * time.Millisecond)
-		So(cache.GetBlocks(b1.Service, b1.Level), ShouldResemble, []*Block{b1})
+		So(cache.GetBlock(5000, 12000, b1.Service, b1.Level), ShouldResemble, b1)
 
 		cache.inChannel <- b2
 		time.Sleep(10 * time.Millisecond)
-		So(cache.GetBlocks(b1.Service, b1.Level), ShouldResemble, []*Block{b1, b2})
+		expectedBlock := &Block{
+			StartTime: 5002,
+			EndTime:   13500,
+			Service:   "test",
+			Level:     "reader",
+			Messages:  append(b1.Messages, b2.Messages[0], b2.Messages[1]),
+		}
+		So(cache.GetBlock(5000, 14000, b1.Service, b1.Level), ShouldResemble, expectedBlock)
 
 		cache.inChannel <- b3
 		time.Sleep(10 * time.Millisecond)
-		So(cache.GetBlocks(b1.Service, b1.Level), ShouldResemble, []*Block{b1, b2, b3})
+		expectedBlock = &Block{
+			StartTime: 10001,
+			EndTime:   40003,
+			Service:   "test",
+			Level:     "reader",
+			Messages:  append([]*Message{b1.Messages[2]}, append(b2.Messages, b3.Messages...)...),
+		}
+		So(cache.GetBlock(10000, 50000, b1.Service, b1.Level), ShouldResemble, expectedBlock)
 
 		cache.Shutdown()
 	})
@@ -111,9 +125,10 @@ func TestCacheCleaning(t *testing.T) {
 		cache.AddBlock(b3)
 		cache.AddBlock(b4)
 		time.Sleep(10 * time.Millisecond)
-		So(cache.GetBlocks("test", "cache"), ShouldResemble, []*Block{b2})
-
-		So(cache.GetBlocks("test", "cache2"), ShouldResemble, []*Block{b3, b4})
+		So(cache.GetBlock(5000, 50000, "test", "cache"), ShouldResemble, b2)
+		expectedBlock := b3.Copy()
+		expectedBlock.Merge(b4)
+		So(cache.GetBlock(5000, 50000, "test", "cache2"), ShouldResemble, expectedBlock)
 	})
 
 	cacheMessageCountLimit = limitBefore

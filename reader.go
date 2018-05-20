@@ -1,7 +1,6 @@
 package log
 
 import (
-	"io/ioutil"
 	"sort"
 )
 
@@ -10,50 +9,104 @@ type CacheAccessor interface {
 	GetCache() *Cache
 }
 
-func getFileNames(service, level string) (files []string, err error) {
-	fileInfos, err := ioutil.ReadDir(BlockPath(service, level))
-	for _, info := range fileInfos {
-		files = append(files, info.Name())
+//Store handles the retrival of blocks
+type Store interface {
+	GetBlock(startTime, endTime int64, service, level string) *Block
+
+	GetLevels(service string) (levels []string)
+
+	GetServices() (services []string)
+
+	Shutdown()
+}
+
+//Reader reads blocks from the given Store levels
+type Reader struct {
+	Stores []Store
+}
+
+//NewReader creates a reader that reads from the provided Store levels
+func NewReader(stores ...Store) *Reader {
+	return &Reader{
+		Stores: stores,
+	}
+}
+
+//GetServiceLevelMessagesInTimeRange returns the blocks in the timerange
+//if no blocks are found in the first Store level, the next ones are tried in order
+func (r *Reader) GetServiceLevelMessagesInTimeRange(startTime, endTime int64, service, level string) (messages []*PlainMessage) {
+	var block *Block
+	for _, store := range r.Stores {
+		block = store.GetBlock(startTime, endTime, service, level)
+		if block != nil {
+			break
+		}
+	}
+	plainMessageStack := block.toPlainMessageStack()
+	plainMessageStack.Flip()
+	for plainMessageStack.Peek() != nil {
+		messages = append(messages, plainMessageStack.PopMessageContainer().(*PlainMessage))
 	}
 	return
 }
 
-//GetBlocksInTimeRange returns the blocks in the timerange
-func GetBlocksInTimeRange(startTime, endTime int64, service, level string, a CacheAccessor) (blocks []*Block, err error) {
-	cachedBlocks := a.GetCache().GetBlocks(service, level)
-
-	if len(cachedBlocks) > 0 {
-		for _, block := range cachedBlocks {
-			if block.IsInTimeRange(startTime, endTime) {
-				blocks = append(blocks, block)
+//GetServiceMessagesInTimeRange returns the blocks in the timerange
+//if no blocks are found in the first Store level, the next ones are tried in order
+func (r *Reader) GetServiceMessagesInTimeRange(startTime, endTime int64, service string) (messages []*ServiceMessage) {
+	stackPerLevel := []*MessageContainerStack{}
+	for _, store := range r.Stores {
+		levels := store.GetLevels(service)
+		for _, level := range levels {
+			block := store.GetBlock(startTime, endTime, service, level)
+			if block != nil {
+				stackPerLevel = append(stackPerLevel, block.toServiceMessageStack())
 			}
 		}
-	} else {
-		fileNames, err := getFileNames(service, level)
-		if err != nil {
-			return nil, err
+		if len(stackPerLevel) > 0 {
+			break
 		}
-		for _, fileName := range fileNames {
-			if b, e := ParseFileNameIntoBlock(fileName); e == nil {
-				if b.IsInTimeRange(startTime, endTime) {
-					b.Service = service
-					b.Level = level
-					if e := b.ReadFromFile(); e == nil {
-						blocks = append(blocks, b)
-					}
+	}
+
+	mergedStack := mergeOrderedMessageStacks(stackPerLevel)
+	for !mergedStack.Empty() {
+		messages = append(messages, mergedStack.PopMessageContainer().(*ServiceMessage))
+	}
+	return
+}
+
+//GetCompleteMessagesInTimeRange returns the blocks in the timerange
+//if no blocks are found in the first Store level, the next ones are tried in order
+func (r *Reader) GetCompleteMessagesInTimeRange(startTime, endTime int64) (messages []*CompleteMessage) {
+	stackPerServiceAndLevel := []*MessageContainerStack{}
+	for _, store := range r.Stores {
+		services := store.GetServices()
+		for _, service := range services {
+			levels := store.GetLevels(service)
+			for _, level := range levels {
+				block := store.GetBlock(startTime, endTime, service, level)
+				if block != nil {
+					stackPerServiceAndLevel = append(stackPerServiceAndLevel, block.toCompleteMessageStack())
 				}
 			}
 		}
+
+		if len(stackPerServiceAndLevel) > 0 {
+			break
+		}
 	}
 
-	blocks = sortBlocks(blocks)
-	if len(blocks) > 0 {
-		blocks[0].ReduceToTimeRange(startTime, endTime)
-	}
-	if len(blocks) > 1 {
-		blocks[len(blocks)-1].ReduceToTimeRange(startTime, endTime)
+	mergedStack := mergeOrderedMessageStacks(stackPerServiceAndLevel)
+	for !mergedStack.Empty() {
+		messages = append(messages, mergedStack.PopMessageContainer().(*CompleteMessage))
 	}
 	return
+}
+
+//Shutdown the stores
+func (r *Reader) Shutdown() {
+	for _, store := range r.Stores {
+		store.Shutdown()
+	}
 }
 
 type blockCollection []*Block
@@ -76,4 +129,50 @@ func (c blockCollection) Swap(i, j int) {
 	tempPointer := c[i]
 	c[i] = c[j]
 	c[j] = tempPointer
+}
+
+//expects stacks not to be empty
+//stacks should have newest messages on top
+func mergeOrderedMessageStacks(orderedContainerStacks []*MessageContainerStack) *MessageContainerStack {
+	mergedStack := &MessageContainerStack{}
+	if len(orderedContainerStacks) == 0 {
+		return mergedStack
+	}
+	indexOfHighest := 0
+	var highestTimestamp, secondHighestTimestamp int64
+
+loop:
+	for {
+		allEmpty := true
+		for index, stack := range orderedContainerStacks {
+			if !stack.Empty() {
+				allEmpty = false
+
+				m := stack.PeekMessageContainer().GetLogMessage()
+				if m.Timestamp >= highestTimestamp {
+					secondHighestTimestamp = highestTimestamp
+					highestTimestamp = m.Timestamp
+					indexOfHighest = index
+				} else if m.Timestamp > secondHighestTimestamp {
+					secondHighestTimestamp = m.Timestamp
+				}
+			}
+		}
+		if allEmpty {
+			break loop
+		}
+		stackOfHighest := orderedContainerStacks[indexOfHighest]
+		mergedStack.PutMessageContainer(stackOfHighest.PopMessageContainer())
+
+		// we know the second highest timestamp,
+		//  so we can check against the next message in the stack, that we just popped a message of
+		for !stackOfHighest.Empty() &&
+			stackOfHighest.PeekMessageContainer().GetLogMessage().Timestamp >= secondHighestTimestamp {
+			mergedStack.PutMessageContainer(stackOfHighest.PopMessageContainer())
+		}
+
+		highestTimestamp = 0
+		secondHighestTimestamp = 0
+	}
+	return mergedStack
 }
