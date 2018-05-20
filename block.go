@@ -11,12 +11,21 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
-var pathPrefix = "data"
-
 // Merge b2 into b1, b2 should be a block that's younger
 func (b *Block) Merge(b2 *Block) {
 	b.Messages = append(b.Messages, b2.Messages...)
 	b.EndTime = b2.EndTime
+}
+
+//Copy copies the block, the values inside the block still point to the same instances
+func (b *Block) Copy() *Block {
+	return &Block{
+		StartTime: b.StartTime,
+		EndTime:   b.EndTime,
+		Level:     b.Level,
+		Service:   b.Service,
+		Messages:  b.Messages,
+	}
 }
 
 //WriteToFile writes the block to disk
@@ -66,15 +75,7 @@ func (b *Block) ReadFromFile() (err error) {
 
 //BlockPath returns the Path where blocks for a given service and level are stored
 func BlockPath(service, level string) string {
-	return fmt.Sprintf("%v/%v/%v", pathPrefix, service, level)
-}
-
-func (b *Block) path() string {
-	return BlockPath(b.Service, b.Level)
-}
-
-func (b *Block) fileName() string {
-	return fmt.Sprintf("%v-%v", b.StartTime, b.EndTime)
+	return fmt.Sprintf("%v/%v", levelPath(service), level)
 }
 
 const maxUint = ^uint64(0)
@@ -131,4 +132,48 @@ func ParseFileNameIntoBlock(filename string) (b *Block, err error) {
 		EndTime:   endTime,
 	}
 	return
+}
+
+func (b *Block) path() string {
+	return BlockPath(b.Service, b.Level)
+}
+
+func (b *Block) fileName() string {
+	return fmt.Sprintf("%v-%v", b.StartTime, b.EndTime)
+}
+
+func (b *Block) toPlainMessageStack() *MessageContainerStack {
+	stack := &MessageContainerStack{}
+	for _, message := range b.Messages {
+		container := &PlainMessage{
+			Message: message,
+		}
+		stack.PutMessageContainer(container)
+	}
+	return stack
+}
+
+func (b *Block) toServiceMessageStack() *MessageContainerStack {
+	stack := &MessageContainerStack{}
+	for _, message := range b.Messages {
+		container := &ServiceMessage{
+			Message: message,
+			Level:   b.Level,
+		}
+		stack.PutMessageContainer(container)
+	}
+	return stack
+}
+
+func (b *Block) toCompleteMessageStack() *MessageContainerStack {
+	stack := &MessageContainerStack{}
+	for _, message := range b.Messages {
+		container := &CompleteMessage{
+			Message: message,
+			Level:   b.Level,
+			Service: b.Service,
+		}
+		stack.PutMessageContainer(container)
+	}
+	return stack
 }

@@ -15,7 +15,7 @@ func (m *CacheAccessorMock) GetCache() *Cache {
 
 func TestGetBlocksInTimeRange(t *testing.T) {
 	pathPrefix = "test"
-	Convey("GetBlocksInTimeRange", t, func() {
+	Convey("mergeOrderedMessageStacks", t, func() {
 		b1 := &Block{
 			StartTime: 5002,
 			EndTime:   10001,
@@ -28,20 +28,20 @@ func TestGetBlocksInTimeRange(t *testing.T) {
 			},
 		}
 		b2 := &Block{
-			StartTime: 13000,
-			EndTime:   17000,
+			StartTime: 8000,
+			EndTime:   12000,
 			Service:   "test",
-			Level:     "reader",
+			Level:     "reader3",
 			Messages: []*Message{
-				&Message{Text: "Foo2", Timestamp: 13000},
-				&Message{Text: "Bar2", Timestamp: 13500},
-				&Message{Text: "Baz2", Timestamp: 17000},
+				&Message{Text: "Foo2", Timestamp: 8000},
+				&Message{Text: "Bar2", Timestamp: 9000},
+				&Message{Text: "Baz2", Timestamp: 12000},
 			},
 		}
 		b3 := &Block{
 			StartTime: 30000,
 			EndTime:   40003,
-			Service:   "test",
+			Service:   "test2",
 			Level:     "reader",
 			Messages: []*Message{
 				&Message{Text: "Foo3", Timestamp: 30000},
@@ -49,28 +49,30 @@ func TestGetBlocksInTimeRange(t *testing.T) {
 				&Message{Text: "Baz3", Timestamp: 40003},
 			},
 		}
-		b4 := &Block{
-			StartTime: 15000,
-			EndTime:   25000,
-			Service:   "test2",
-			Level:     "should_not_be_included",
-			Messages: []*Message{
-				&Message{Text: "Foo3", Timestamp: 30000},
-				&Message{Text: "Bar3", Timestamp: 34000},
-				&Message{Text: "Baz3", Timestamp: 40003},
-			},
+		stacks := []*MessageContainerStack{
+			b1.toCompleteMessageStack(),
+			b2.toCompleteMessageStack(),
+			b3.toCompleteMessageStack(),
 		}
-		b1.WriteToFile()
-		b2.WriteToFile()
-		b3.WriteToFile()
-		b4.WriteToFile()
-		blocks, err := GetBlocksInTimeRange(5001, 29999, "test", "reader", &CacheAccessorMock{})
 
-		So(err, ShouldBeNil)
+		mergedStack := mergeOrderedMessageStacks(stacks)
+		completeMessages := []*CompleteMessage{}
+		for !mergedStack.Empty() {
+			completeMessages = append(completeMessages, mergedStack.PopMessageContainer().(*CompleteMessage))
+		}
+		expectedMessages := []*CompleteMessage{
+			&CompleteMessage{Service: "test", Level: "reader", Message: &Message{Text: "Foo", Timestamp: 5002}},
+			&CompleteMessage{Service: "test", Level: "reader", Message: &Message{Text: "Bar", Timestamp: 7005}},
+			&CompleteMessage{Service: "test", Level: "reader3", Message: &Message{Text: "Foo2", Timestamp: 8000}},
+			&CompleteMessage{Service: "test", Level: "reader3", Message: &Message{Text: "Bar2", Timestamp: 9000}},
+			&CompleteMessage{Service: "test", Level: "reader", Message: &Message{Text: "Baz", Timestamp: 10001}},
+			&CompleteMessage{Service: "test", Level: "reader3", Message: &Message{Text: "Baz2", Timestamp: 12000}},
+			&CompleteMessage{Service: "test2", Level: "reader", Message: &Message{Text: "Foo3", Timestamp: 30000}},
+			&CompleteMessage{Service: "test2", Level: "reader", Message: &Message{Text: "Bar3", Timestamp: 34000}},
+			&CompleteMessage{Service: "test2", Level: "reader", Message: &Message{Text: "Baz3", Timestamp: 40003}},
+		}
+		So(completeMessages, ShouldResemble, expectedMessages)
 
-		So(len(blocks), ShouldEqual, 2)
-		So(blocks[0], ShouldResemble, b1)
-		So(blocks[1], ShouldResemble, b2)
 	})
 	os.RemoveAll(pathPrefix)
 }

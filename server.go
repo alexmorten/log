@@ -1,7 +1,6 @@
 package log
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,21 +14,23 @@ import (
 // Server handles incoming blocks
 type Server struct {
 	WriterCollection *WriterCollection
-	Cache            *Cache
+	Reader           *Reader
 }
 
-//NewServer creates a new Server and initializes its members
-func NewServer() *Server {
+//NewDefaultServer creates a new Server and initializes its members
+func NewDefaultServer() *Server {
 	cache := NewCache()
+	fileReader := &FileReader{}
+	reader := NewReader(cache, fileReader)
 	return &Server{
-		Cache:            cache,
+		Reader:           reader,
 		WriterCollection: NewWriterCollection(cache),
 	}
 }
 
 // StartServer starts a new Server
 func StartServer() {
-	s := NewServer()
+	s := NewDefaultServer()
 	http.Handle("/", s)
 	err := http.ListenAndServe(":7654", nil)
 	if err != nil {
@@ -41,12 +42,7 @@ func StartServer() {
 //Shutdown the server and all its components
 func (s *Server) Shutdown() {
 	s.WriterCollection.Shutdown()
-	s.Cache.Shutdown()
-}
-
-//GetCache of server
-func (s *Server) GetCache() *Cache {
-	return s.Cache
+	s.Reader.Shutdown()
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -100,29 +96,63 @@ type getParams struct {
 
 func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
-	getParams, err := parseParams(params)
+	parsedParams, err := parseParams(params)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	blocks, err := GetBlocksInTimeRange(
-		getParams.startTime,
-		getParams.endTime,
-		getParams.service,
-		getParams.level,
-		s,
+	if parsedParams.service != "" && parsedParams.level != "" {
+		s.handleServiceLevelGet(w, parsedParams)
+	} else if parsedParams.service != "" && parsedParams.level == "" {
+		s.handleServiceGet(w, parsedParams)
+	} else {
+		s.handlePlainGet(w, parsedParams)
+	}
+
+}
+
+func (s *Server) handleServiceLevelGet(w http.ResponseWriter, p *getParams) {
+	messages := s.Reader.GetServiceLevelMessagesInTimeRange(
+		p.startTime,
+		p.endTime,
+		p.service,
+		p.level,
 	)
 
+	response := &GetServiceLevelResponse{Messages: messages}
+
+	bytes, err := proto.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Write(bytes)
+}
 
-	messages := []*Message{}
-	for _, block := range blocks {
-		messages = append(messages, block.Messages...)
+func (s *Server) handleServiceGet(w http.ResponseWriter, p *getParams) {
+	messages := s.Reader.GetServiceMessagesInTimeRange(
+		p.startTime,
+		p.endTime,
+		p.service,
+	)
+
+	response := &GetServiceResponse{Messages: messages}
+
+	bytes, err := proto.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	w.Write(bytes)
+}
+
+func (s *Server) handlePlainGet(w http.ResponseWriter, p *getParams) {
+	messages := s.Reader.GetCompleteMessagesInTimeRange(
+		p.startTime,
+		p.endTime,
+	)
+
 	response := &GetResponse{Messages: messages}
 
 	bytes, err := proto.Marshal(response)
@@ -147,17 +177,7 @@ func parseParams(params url.Values) (p *getParams, err error) {
 	} else {
 		p.endTime, err = strconv.ParseInt(endTimeParam, 10, 64)
 	}
-
 	p.service = params.Get("service")
-	if p.service == "" {
-		err = errors.New("No service param provided")
-		return
-	}
 	p.level = params.Get("level")
-	if p.level == "" {
-		err = errors.New("No level param provided")
-		return
-	}
-
 	return
 }
