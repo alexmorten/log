@@ -1,15 +1,5 @@
 package log
 
-import (
-	"sync"
-)
-
-var nodePool = &sync.Pool{
-	New: func() interface{} {
-		return &Node{}
-	},
-}
-
 //Node of the Stack
 type Node struct {
 	data interface{}
@@ -24,7 +14,7 @@ type Stack struct {
 //Put a datum on the stack
 func (s *Stack) Put(data ...interface{}) {
 	for _, datum := range data {
-		n := nodePool.Get().(*Node)
+		n := pools.Nodes.Get().(*Node)
 		n.next = s.head
 		n.data = datum
 		s.head = n
@@ -48,7 +38,7 @@ func (s *Stack) Pop() interface{} {
 	s.head = n.next
 
 	data := n.data
-	nodePool.Put(n)
+	pools.Nodes.Put(n)
 	return data
 }
 

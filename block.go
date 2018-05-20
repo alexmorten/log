@@ -145,9 +145,10 @@ func (b *Block) fileName() string {
 func (b *Block) toPlainMessageStack() *MessageContainerStack {
 	stack := &MessageContainerStack{}
 	for _, message := range b.Messages {
-		container := &PlainMessage{
-			Message: message,
-		}
+		container := pools.PlainMessages.Get().(*PlainMessage)
+		container.Reset()
+
+		container.Message = message
 		stack.PutMessageContainer(container)
 	}
 	return stack
@@ -156,10 +157,11 @@ func (b *Block) toPlainMessageStack() *MessageContainerStack {
 func (b *Block) toServiceMessageStack() *MessageContainerStack {
 	stack := &MessageContainerStack{}
 	for _, message := range b.Messages {
-		container := &ServiceMessage{
-			Message: message,
-			Level:   b.Level,
-		}
+		container := pools.ServiceMessages.Get().(*ServiceMessage)
+		container.Reset()
+
+		container.Message = message
+		container.Level = b.Level
 		stack.PutMessageContainer(container)
 	}
 	return stack
@@ -168,11 +170,12 @@ func (b *Block) toServiceMessageStack() *MessageContainerStack {
 func (b *Block) toCompleteMessageStack() *MessageContainerStack {
 	stack := &MessageContainerStack{}
 	for _, message := range b.Messages {
-		container := &CompleteMessage{
-			Message: message,
-			Level:   b.Level,
-			Service: b.Service,
-		}
+		container := pools.CompleteMessages.Get().(*CompleteMessage)
+		container.Reset()
+
+		container.Message = message
+		container.Level = b.Level
+		container.Service = b.Service
 		stack.PutMessageContainer(container)
 	}
 	return stack

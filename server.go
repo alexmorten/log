@@ -120,7 +120,9 @@ func (s *Server) handleServiceLevelGet(w http.ResponseWriter, p *getParams) {
 		p.level,
 	)
 
-	response := &GetServiceLevelResponse{Messages: messages}
+	response := pools.GetServiceLevelResponses.Get().(*GetServiceLevelResponse)
+	response.Reset()
+	response.Messages = messages
 
 	bytes, err := proto.Marshal(response)
 	if err != nil {
@@ -128,6 +130,12 @@ func (s *Server) handleServiceLevelGet(w http.ResponseWriter, p *getParams) {
 		return
 	}
 	w.Write(bytes)
+
+	// put objects back into their pools
+	for _, message := range messages {
+		pools.PlainMessages.Put(message)
+	}
+	pools.GetServiceLevelResponses.Put(response)
 }
 
 func (s *Server) handleServiceGet(w http.ResponseWriter, p *getParams) {
@@ -137,7 +145,9 @@ func (s *Server) handleServiceGet(w http.ResponseWriter, p *getParams) {
 		p.service,
 	)
 
-	response := &GetServiceResponse{Messages: messages}
+	response := pools.GetServiceResponses.Get().(*GetServiceResponse)
+	response.Reset()
+	response.Messages = messages
 
 	bytes, err := proto.Marshal(response)
 	if err != nil {
@@ -145,6 +155,13 @@ func (s *Server) handleServiceGet(w http.ResponseWriter, p *getParams) {
 		return
 	}
 	w.Write(bytes)
+
+	// put objects back into their pools
+	for _, message := range messages {
+		pools.ServiceMessages.Put(message)
+	}
+	pools.GetServiceResponses.Put(response)
+
 }
 
 func (s *Server) handlePlainGet(w http.ResponseWriter, p *getParams) {
@@ -152,8 +169,9 @@ func (s *Server) handlePlainGet(w http.ResponseWriter, p *getParams) {
 		p.startTime,
 		p.endTime,
 	)
-
-	response := &GetResponse{Messages: messages}
+	response := pools.GetResponses.Get().(*GetResponse)
+	response.Reset()
+	response.Messages = messages
 
 	bytes, err := proto.Marshal(response)
 	if err != nil {
@@ -161,6 +179,12 @@ func (s *Server) handlePlainGet(w http.ResponseWriter, p *getParams) {
 		return
 	}
 	w.Write(bytes)
+
+	// put objects back into their pools
+	for _, message := range messages {
+		pools.CompleteMessages.Put(message)
+	}
+	pools.GetResponses.Put(response)
 }
 
 func parseParams(params url.Values) (p *getParams, err error) {
