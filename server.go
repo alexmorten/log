@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -30,6 +31,7 @@ func NewDefaultServer() *Server {
 
 // StartServer starts a new Server
 func StartServer() {
+	os.MkdirAll(pathPrefix, os.ModePerm)
 	s := NewDefaultServer()
 	http.Handle("/", s)
 	err := http.ListenAndServe(":7654", nil)
