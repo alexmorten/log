@@ -201,7 +201,7 @@ func parseParams(params url.Values) (p *getParams, err error) {
 	if startTimeParam == "" {
 		p.startTime = time.Unix(p.endTime-int64((time.Hour*1).Seconds()), 0).Unix()
 	} else {
-		p.endTime, err = strconv.ParseInt(endTimeParam, 10, 64)
+		p.startTime, err = strconv.ParseInt(startTimeParam, 10, 64)
 	}
 	p.service = params.Get("service")
 	p.level = params.Get("level")
