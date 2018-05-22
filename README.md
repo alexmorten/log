@@ -2,12 +2,16 @@
 
 ## run the server 
 
-- clone this repo
-- `go run cmd/server/main.go`
+### cloning repo
+ clone this repo and `go run cmd/server/main.go`
+
+### using docker
+- you should create a volume for this: `docker volume create log-volume`
+- run it with `docker run --rm -p 7654:7654 -v log-volume -d alexmorten/log`
 
 ## install the cli
-the command line is an easy way of seeing the logs that have been sent to the server
-`go get -u github.com/alexmorten/log/cmd/logcli`
+- the command line is an easy way of seeing the logs that have been sent to the server
+- `go get -u github.com/alexmorten/log/cmd/logcli`
 
 ### usage of the cli
 
