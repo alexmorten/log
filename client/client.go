@@ -70,16 +70,18 @@ func (c *Client) Commit() {
 }
 
 func (c *Client) pushMessagesPeriodically() {
-	timer := time.NewTimer(c.Config.SyncTime)
+	ticker := time.NewTicker(c.Config.SyncTime)
 loop:
 	for {
 		select {
-		case <-timer.C:
+		case <-ticker.C:
 			c.pushMessages()
 		case <-c.shutdownChannel:
 			break loop
 		}
 	}
+	//release ticker resources
+	ticker.Stop()
 }
 
 //Shutdown the Client
