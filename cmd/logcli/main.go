@@ -51,7 +51,6 @@ func main() {
 }
 
 func handleCompleteResponse(r *http.Response) {
-	fmt.Println("handle complete")
 	response := &log.GetResponse{}
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -70,7 +69,6 @@ func handleCompleteResponse(r *http.Response) {
 }
 
 func handleServiceResponse(r *http.Response) {
-	fmt.Println("handle Service")
 	response := &log.GetServiceResponse{}
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -89,7 +87,6 @@ func handleServiceResponse(r *http.Response) {
 }
 
 func handleServiceLevelResponse(r *http.Response) {
-	fmt.Println("handle service level")
 	response := &log.GetServiceLevelResponse{}
 	bytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
