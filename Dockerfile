@@ -5,6 +5,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o server cmd/server/ma
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
-COPY --from=builder /go/src/github.com/alexmorten/log/server .
+RUN mkdir app
+COPY --from=builder /go/src/github.com/alexmorten/log/server app
+WORKDIR app
 CMD ["./server"]
 EXPOSE 7654
