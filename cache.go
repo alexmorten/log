@@ -68,10 +68,8 @@ func (c *Cache) GetBlock(startTime, endTime int64, service, level string) *Block
 
 //GetLevels for a given service
 func (c *Cache) GetLevels(service string) (levels []string) {
-	for _, levelMap := range c.blocks {
-		for level := range levelMap {
-			levels = append(levels, level)
-		}
+	for level := range c.blocks[service] {
+		levels = append(levels, level)
 	}
 	return
 }
@@ -104,12 +102,11 @@ loop:
 func (c *Cache) handleAddBlock(b *Block) {
 	c.messageCounter += len(b.Messages)
 
-	current := c.blocks[b.Service][b.Level]
-
 	//make sure the inner map is initialized as well
 	if c.blocks[b.Service] == nil {
 		c.blocks[b.Service] = map[string][]*Block{}
 	}
+	current := c.blocks[b.Service][b.Level]
 
 	c.blocks[b.Service][b.Level] = append(current, b)
 	c.cleanCache()
