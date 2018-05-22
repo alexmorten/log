@@ -6,17 +6,21 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/alexmorten/log"
 	"github.com/gogo/protobuf/proto"
 )
 
 var service, level, serverURL string
+var fromTime, toTime int64
 
 func main() {
 	flag.StringVar(&service, "service", "", "restrict output to log messages from the provided service")
 	flag.StringVar(&level, "level", "", "restrict output to log messages on the provided level (can only be used together with a service)")
 	flag.StringVar(&serverURL, "url", "http://localhost:7654", "url of the log server")
+	flag.Int64Var(&fromTime, "from", 0, "look for logs after this point in time")
+	flag.Int64Var(&toTime, "to", 0, "look for logs before this point in time")
 	flag.Parse()
 	u, err := url.Parse(serverURL)
 	if err != nil {
@@ -33,7 +37,15 @@ func main() {
 		fmt.Println("you can only use the level flag if you also provide a service!")
 		return
 	}
+
+	if fromTime != 0 {
+		params.Add("from_time", strconv.FormatInt(fromTime, 10))
+	}
+	if toTime != 0 {
+		params.Add("to_time", strconv.FormatInt(fromTime, 10))
+	}
 	u.RawQuery = params.Encode()
+	fmt.Println("Getting from ", u.String())
 	resp, err := http.Get(u.String())
 
 	if err != nil {
