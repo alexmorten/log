@@ -32,7 +32,7 @@ func (c *Cache) AddMessage(level string, message *log.Message) {
 //GetCachedMessagesAndReset gets the cache and resets it to an empty cache
 func (c *Cache) GetCachedMessagesAndReset() map[string][]*log.Message {
 	c.Lock()
-	c.Unlock()
+	defer c.Unlock()
 	messages := c.messages
 	c.messages = make(map[string][]*log.Message)
 	return messages
