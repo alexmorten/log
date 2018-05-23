@@ -44,7 +44,7 @@ func (r *Reader) GetServiceLevelMessagesInTimeRange(startTime, endTime int64, se
 	}
 	plainMessageStack := block.toPlainMessageStack()
 	plainMessageStack.Flip()
-	for plainMessageStack.Peek() != nil {
+	for !plainMessageStack.Empty() {
 		messages = append(messages, plainMessageStack.PopMessageContainer().(*PlainMessage))
 	}
 	return
