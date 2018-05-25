@@ -3,7 +3,8 @@
 ## run the server 
 
 ### by cloning this repo
- clone this repo and `go run cmd/server/main.go`
+ - clone this repo
+ - `make install dep run`
 
 ### by using docker
 - you should create a volume for this: `docker volume create log-volume`
