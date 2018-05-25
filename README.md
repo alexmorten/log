@@ -51,3 +51,4 @@ func main() {
 ### cli
 - [ ] parse/serialize human readable times 
 - [ ] add interactive component, allowing to scroll through logs easiliy (with arrow keys for example)
+- [ ] add color for different log levels
