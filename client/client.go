@@ -20,8 +20,9 @@ type Client struct {
 //NewClient with default config
 func NewClient() *Client {
 	c := &Client{
-		Config: NewConfig(),
-		Cache:  NewCache(),
+		Config:          NewConfig(),
+		Cache:           NewCache(),
+		shutdownChannel: make(chan struct{}),
 	}
 	go c.pushMessagesPeriodically()
 	return c
@@ -30,8 +31,9 @@ func NewClient() *Client {
 //NewClientWithConfig with given config
 func NewClientWithConfig(config Config) *Client {
 	c := &Client{
-		Config: &config,
-		Cache:  NewCache(),
+		Config:          &config,
+		Cache:           NewCache(),
+		shutdownChannel: make(chan struct{}),
 	}
 	go c.pushMessagesPeriodically()
 	return c
