@@ -42,7 +42,7 @@ func main() {
 		params.Add("from_time", strconv.FormatInt(fromTime, 10))
 	}
 	if toTime != 0 {
-		params.Add("to_time", strconv.FormatInt(fromTime, 10))
+		params.Add("to_time", strconv.FormatInt(toTime, 10))
 	}
 	u.RawQuery = params.Encode()
 	fmt.Println("Getting from ", u.String())
