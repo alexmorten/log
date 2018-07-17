@@ -7,7 +7,7 @@ import (
 //WriterCollection handles the writers for the
 type WriterCollection struct {
 	writers map[string]*Writer
-	mutex   sync.Mutex
+	mutex   sync.RWMutex
 	cache   *Cache
 }
 
@@ -15,7 +15,7 @@ type WriterCollection struct {
 func NewWriterCollection(cache *Cache) *WriterCollection {
 	return &WriterCollection{
 		writers: map[string]*Writer{},
-		mutex:   sync.Mutex{},
+		mutex:   sync.RWMutex{},
 		cache:   cache,
 	}
 }
@@ -23,8 +23,10 @@ func NewWriterCollection(cache *Cache) *WriterCollection {
 //GetWriter thread-safely returns a writer for the service and level out of the collection or adds one if necessary.
 func (c *WriterCollection) GetWriter(service, level string) *Writer {
 
-	//no mutex here, so we can read already created writers in parallel
+	c.mutex.RLock()
 	storedWriter := c.getStoredWriter(service, level)
+	c.mutex.RUnlock()
+
 	if storedWriter != nil {
 		return storedWriter
 	}
